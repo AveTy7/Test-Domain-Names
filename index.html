@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expired Domain Discovery & Intelligence Tool</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-dark-900 border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
+                <i class="fa-solid fa-radar text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight text-white flex items-center gap-2">
+                    DomainScout <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono">v2.4 PRO</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Automated Expired Domain Intelligence & Drop-Catch Analyzer</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- View Mode Switcher -->
+            <div class="bg-dark-800 p-1 rounded-lg border border-slate-700 flex items-center">
+                <button onclick="switchView('table')" id="btn-view-table" class="px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-list"></i> Table
+                </button>
+                <button onclick="switchView('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-grip"></i> Cards
+                </button>
+            </div>
+
+            <!-- Watchlist Tab Button -->
+            <button onclick="toggleWatchlistTab()" id="btn-watchlist-toggle" class="relative bg-dark-800 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2">
+                <i class="fa-solid fa-bookmark text-amber-400"></i>
+                <span class="hidden sm:inline">Watchlist</span>
+                <span id="watchlist-badge" class="bg-amber-500 text-dark-950 px-1.5 py-0.2 rounded-full font-bold text-[10px]">0</span>
+            </button>
+
+            <!-- CSV Import / Export Dropdown -->
+            <div class="relative">
+                <button onclick="toggleMenu('csv-menu')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-file-arrow-down"></i> <span class="hidden md:inline">Data IO</span> <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                <div id="csv-menu" class="hidden absolute right-0 mt-2 w-48 bg-dark-900 border border-slate-700 rounded-lg shadow-2xl py-1 z-50">
+                    <button onclick="triggerCsvUpload()" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-dark-800 flex items-center gap-2">
+                        <i class="fa-solid fa-upload text-indigo-400"></i> Import Custom CSV
+                    </button>
+                    <button onclick="exportCsv()" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-dark-800 flex items-center gap-2">
+                        <i class="fa-solid fa-download text-emerald-400"></i> Export Filtered CSV
+                    </button>
+                    <button onclick="resetMockData()" class="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-dark-800 flex items-center gap-2 border-t border-slate-800">
+                        <i class="fa-solid fa-rotate-right"></i> Reset Default Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hidden file input for CSV upload -->
+    <input type="file" id="csv-file-input" accept=".csv,.txt" class="hidden" onchange="handleCsvUpload(event)">
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col lg:flex-row">
+
+        <!-- Sidebar Filters -->
+        <aside class="w-full lg:w-80 bg-dark-900 border-r border-slate-800 p-4 space-y-5 shrink-0 overflow-y-auto">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h2 class="font-semibold text-sm text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-indigo-400"></i> Filter Intelligence
+                </h2>
+                <button onclick="resetFilters()" class="text-xs text-indigo-400 hover:underline">Reset All</button>
+            </div>
+
+            <!-- Keyword Search -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-medium text-slate-400">Keyword Search</label>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+                    <input type="text" id="filter-keyword" oninput="applyFilters()" placeholder="e.g. tech, health, AI..." class="w-full bg-dark-950 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+
+            <!-- TLD Filter -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-medium text-slate-400">Domain Extension (TLD)</label>
+                <div class="grid grid-cols-4 gap-1.5" id="tld-filters">
+                    <button onclick="toggleTldFilter('all')" data-tld="all" class="tld-btn bg-indigo-600 text-white rounded py-1 text-xs font-mono font-semibold transition">ALL</button>
+                    <button onclick="toggleTldFilter('.com')" data-tld=".com" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.com</button>
+                    <button onclick="toggleTldFilter('.net')" data-tld=".net" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.net</button>
+                    <button onclick="toggleTldFilter('.org')" data-tld=".org" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.org</button>
+                    <button onclick="toggleTldFilter('.io')" data-tld=".io" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.io</button>
+                    <button onclick="toggleTldFilter('.co')" data-tld=".co" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.co</button>
+                    <button onclick="toggleTldFilter('.ai')" data-tld=".ai" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.ai</button>
+                    <button onclick="toggleTldFilter('.xyz')" data-tld=".xyz" class="tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition">.xyz</button>
+                </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-medium text-slate-400">Niche Category</label>
+                <select id="filter-category" onchange="applyFilters()" class="w-full bg-dark-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="all">All Categories</option>
+                    <option value="Tech & SaaS">Tech & SaaS</option>
+                    <option value="Finance & Crypto">Finance & Crypto</option>
+                    <option value="Health & Bio">Health & Bio</option>
+                    <option value="E-Commerce">E-Commerce</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="General / Brandable">General / Brandable</option>
+                </select>
+            </div>
+
+            <!-- Min Backlinks Slider -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium text-slate-400">Min Backlinks (BL)</span>
+                    <span id="val-min-bl" class="font-mono text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-min-bl" min="0" max="2500" step="50" value="0" oninput="updateRangeLabel('min-bl'); applyFilters()" class="w-full accent-indigo-500 bg-dark-950 cursor-pointer">
+            </div>
+
+            <!-- Min Referring Domains -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium text-slate-400">Min Referring Domains</span>
+                    <span id="val-min-ref" class="font-mono text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-min-ref" min="0" max="500" step="10" value="0" oninput="updateRangeLabel('min-ref'); applyFilters()" class="w-full accent-indigo-500 bg-dark-950 cursor-pointer">
+            </div>
+
+            <!-- Min Archive Age -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium text-slate-400">Min Wayback Age (Years)</span>
+                    <span id="val-min-age" class="font-mono text-indigo-400 font-bold">0 yrs</span>
+                </div>
+                <input type="range" id="filter-min-age" min="0" max="15" step="1" value="0" oninput="updateRangeLabel('min-age'); applyFilters()" class="w-full accent-indigo-500 bg-dark-950 cursor-pointer">
+            </div>
+
+            <!-- Max Estimated Price / Auction Budget -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium text-slate-400">Max Auction Est. ($)</span>
+                    <span id="val-max-price" class="font-mono text-indigo-400 font-bold">$10,000+</span>
+                </div>
+                <input type="range" id="filter-max-price" min="50" max="10000" step="100" value="10000" oninput="updateRangeLabel('max-price'); applyFilters()" class="w-full accent-indigo-500 bg-dark-950 cursor-pointer">
+            </div>
+
+            <!-- SEO Health Filter -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-medium text-slate-400">SEO Health Status</label>
+                <select id="filter-health" onchange="applyFilters()" class="w-full bg-dark-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="all">All Health Scores</option>
+                    <option value="Clean">Clean (Trustworthy)</option>
+                    <option value="Warning">Warning (Moderate Spam risk)</option>
+                    <option value="High Risk">High Risk (Avoid)</option>
+                </select>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- Stats Bar / Breadcrumb -->
+            <div class="bg-dark-900/50 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="text-xs text-slate-400">
+                        Showing <span id="result-count" class="font-bold text-white font-mono">0</span> domains
+                    </div>
+                    <div id="active-watchlist-indicator" class="hidden items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-full text-xs font-medium">
+                        <i class="fa-solid fa-bookmark"></i> Viewing Watchlist (<span id="watchlist-count-badge">0</span>)
+                        <button onclick="toggleWatchlistTab()" class="ml-1 hover:text-white">&times;</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs text-slate-400">Sort By:</span>
+                    <select id="sort-by" onchange="applyFilters()" class="bg-dark-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="value-desc">Estimated Value (High to Low)</option>
+                        <option value="bl-desc">Backlinks (Most to Least)</option>
+                        <option value="ref-desc">Referring Domains</option>
+                        <option value="age-desc">Wayback Age (Oldest First)</option>
+                        <option value="name-asc">Alphabetical (A-Z)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- View Container (Table or Grid) -->
+            <div class="flex-1 overflow-auto p-4 lg:p-6" id="view-container">
+                <!-- Injected dynamically via JavaScript -->
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Domain Audit Modal -->
+    <div id="audit-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-dark-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+                    <h3 id="modal-domain-title" class="font-bold text-base text-white mono">example.com</h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg px-2">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-5 text-sm">
+                <!-- Modal Body Metrics -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-dark-950 border border-slate-800 p-3 rounded-lg text-center">
+                        <div class="text-xs text-slate-400">Est. Value</div>
+                        <div id="modal-est-value" class="text-emerald-400 font-bold font-mono text-base mt-1">$0</div>
+                    </div>
+                    <div class="bg-dark-950 border border-slate-800 p-3 rounded-lg text-center">
+                        <div class="text-xs text-slate-400">Backlinks</div>
+                        <div id="modal-bl" class="text-indigo-400 font-bold font-mono text-base mt-1">0</div>
+                    </div>
+                    <div class="bg-dark-950 border border-slate-800 p-3 rounded-lg text-center">
+                        <div class="text-xs text-slate-400">Ref Domains</div>
+                        <div id="modal-ref" class="text-indigo-400 font-bold font-mono text-base mt-1">0</div>
+                    </div>
+                    <div class="bg-dark-950 border border-slate-800 p-3 rounded-lg text-center">
+                        <div class="text-xs text-slate-400">Archive Age</div>
+                        <div id="modal-age" class="text-indigo-400 font-bold font-mono text-base mt-1">0 yrs</div>
+                    </div>
+                </div>
+
+                <!-- SEO Health Breakdown -->
+                <div class="bg-dark-950 border border-slate-800 p-4 rounded-lg space-y-2">
+                    <div class="font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> SEO Risk & Link Ratio Analysis
+                    </div>
+                    <p id="modal-health-desc" class="text-xs text-slate-400 leading-relaxed"></p>
+                </div>
+
+                <!-- Quick Actions inside modal -->
+                <div class="space-y-2">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">External Auditing Tools</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <a id="modal-link-wayback" href="#" target="_blank" class="bg-dark-950 hover:bg-dark-800 border border-slate-700 text-slate-200 p-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> Wayback Machine
+                        </a>
+                        <a id="modal-link-uspto" href="#" target="_blank" class="bg-dark-950 hover:bg-dark-800 border border-slate-700 text-slate-200 p-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-scale-balanced text-indigo-400"></i> USPTO Trademark
+                        </a>
+                        <a id="modal-link-whois" href="#" target="_blank" class="bg-dark-950 hover:bg-dark-800 border border-slate-700 text-slate-200 p-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-globe text-emerald-400"></i> Registrar / DropCatch
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-3 border-t border-slate-800 bg-dark-950 flex justify-end">
+                <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-1.5 rounded-lg text-xs font-medium transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Initial robust mock dataset
+        const defaultDomains = [
+            { id: 1, name: "cloudnexus.io", tld: ".io", category: "Tech & SaaS", bl: 1840, ref: 310, age: 7, value: 3400, health: "Clean", status: "Pending Delete" },
+            { id: 2, name: "cryptoshield.net", tld: ".net", category: "Finance & Crypto", bl: 950, ref: 145, age: 5, value: 1850, health: "Warning", status: "GoDaddy Closeout" },
+            { id: 3, name: "biogenixlabs.org", tld: ".org", category: "Health & Bio", bl: 2450, ref: 480, age: 11, value: 5200, health: "Clean", status: "Pending Delete" },
+            { id: 4, name: "urbanloft.co", tld: ".co", category: "Real Estate", bl: 320, ref: 65, age: 3, value: 950, health: "Clean", status: "Available" },
+            { id: 5, name: "zenithai.com", tld: ".com", category: "Tech & SaaS", bl: 4100, ref: 720, age: 9, value: 8900, health: "Clean", status: "Pending Delete" },
+            { id: 6, name: "quickcart.xyz", tld: ".xyz", category: "E-Commerce", bl: 120, ref: 22, age: 1, value: 350, health: "High Risk", status: "GoDaddy Closeout" },
+            { id: 7, name: "solargridtech.com", tld: ".com", category: "Tech & SaaS", bl: 1250, ref: 210, age: 6, value: 2400, health: "Clean", status: "Available" },
+            { id: 8, name: "medicaresync.net", tld: ".net", category: "Health & Bio", bl: 680, ref: 94, age: 4, value: 1200, health: "Warning", status: "Pending Delete" },
+            { id: 9, name: "apexcapital.co", tld: ".co", category: "Finance & Crypto", bl: 1540, ref: 290, age: 8, value: 3100, health: "Clean", status: "GoDaddy Closeout" },
+            { id: 10, name: "proptechvibe.io", tld: ".io", category: "Real Estate", bl: 890, ref: 130, age: 3, value: 1600, health: "Clean", status: "Pending Delete" },
+            { id: 11, name: "genomica.org", tld: ".org", category: "Health & Bio", bl: 3100, ref: 540, age: 12, value: 6800, health: "Clean", status: "Available" },
+            { id: 12, name: "hyperionai.com", tld: ".com", category: "Tech & SaaS", bl: 5200, ref: 940, age: 10, value: 12500, health: "Clean", status: "Pending Delete" },
+            { id: 13, name: "shopflow.xyz", tld: ".xyz", category: "E-Commerce", bl: 45, ref: 12, age: 1, value: 210, health: "High Risk", status: "GoDaddy Closeout" },
+            { id: 14, name: "decentrade.io", tld: ".io", category: "Finance & Crypto", bl: 1100, ref: 195, age: 4, value: 2200, health: "Clean", status: "Available" },
+            { id: 15, name: "nexusrealestate.com", tld: ".com", category: "Real Estate", bl: 2300, ref: 380, age: 8, value: 4500, health: "Clean", status: "Pending Delete" }
+        ];
+
+        let domains = [...defaultDomains];
+        let watchlist = JSON.parse(localStorage.getItem('domain_watchlist') || '[]');
+        let currentView = 'table';
+        let currentTldFilter = 'all';
+        let showWatchlistOnly = false;
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            applyFilters();
+            updateWatchlistBadge();
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#csv-menu') && !e.target.closest('button')) {
+                    document.getElementById('csv-menu').classList.add('hidden');
+                }
+            });
+        });
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgCol = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-indigo-600';
+            toast.className = `${bgCol} text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2 pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleMenu(menuId) {
+            const menu = document.getElementById(menuId);
+            menu.classList.toggle('hidden');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const btnTable = document.getElementById('btn-view-table');
+            const btnGrid = document.getElementById('btn-view-grid');
+            if (view === 'table') {
+                btnTable.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5";
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5";
+            } else {
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5";
+                btnTable.className = "px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5";
+            }
+            applyFilters();
+        }
+
+        function toggleTldFilter(tld) {
+            currentTldFilter = tld;
+            document.querySelectorAll('.tld-btn').forEach(btn => {
+                if (btn.getAttribute('data-tld') === tld) {
+                    btn.className = "tld-btn bg-indigo-600 text-white rounded py-1 text-xs font-mono font-semibold transition";
+                } else {
+                    btn.className = "tld-btn bg-dark-950 border border-slate-700 text-slate-300 rounded py-1 text-xs font-mono transition";
+                }
+            });
+            applyFilters();
+        }
+
+        function updateRangeLabel(type) {
+            const val = document.getElementById(`filter-${type}`).value;
+            const label = document.getElementById(`val-${type}`);
+            if (type === 'min-age') {
+                label.innerText = val + ' yrs';
+            } else if (type === 'max-price') {
+                label.innerText = val >= 10000 ? '$10,000+' : '$' + Number(val).toLocaleString();
+            } else {
+                label.innerText = Number(val).toLocaleString();
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-keyword').value = '';
+            document.getElementById('filter-category').value = 'all';
+            document.getElementById('filter-min-bl').value = 0;
+            document.getElementById('filter-min-ref').value = 0;
+            document.getElementById('filter-min-age').value = 0;
+            document.getElementById('filter-max-price').value = 10000;
+            document.getElementById('filter-health').value = 'all';
+            updateRangeLabel('min-bl');
+            updateRangeLabel('min-ref');
+            updateRangeLabel('min-age');
+            updateRangeLabel('max-price');
+            toggleTldFilter('all');
+        }
+
+        function toggleWatchlistTab() {
+            showWatchlistOnly = !showWatchlistOnly;
+            const indicator = document.getElementById('active-watchlist-indicator');
+            const btn = document.getElementById('btn-watchlist-toggle');
+            if (showWatchlistOnly) {
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+                btn.classList.add('border-amber-500/50', 'bg-amber-500/10');
+            } else {
+                indicator.classList.remove('flex');
+                indicator.classList.add('hidden');
+                btn.classList.remove('border-amber-500/50', 'bg-amber-500/10');
+            }
+            applyFilters();
+        }
+
+        function toggleWatchlist(domainName, event) {
+            event.stopPropagation();
+            const idx = watchlist.indexOf(domainName);
+            if (idx > -1) {
+                watchlist.splice(idx, 1);
+                showToast(`Removed ${domainName} from watchlist`, 'info');
+            } else {
+                watchlist.push(domainName);
+                showToast(`Added ${domainName} to watchlist!`, 'success');
+            }
+            localStorage.setItem('domain_watchlist', JSON.stringify(watchlist));
+            updateWatchlistBadge();
+            applyFilters();
+        }
+
+        function updateWatchlistBadge() {
+            document.getElementById('watchlist-badge').innerText = watchlist.length;
+            document.getElementById('watchlist-count-badge').innerText = watchlist.length;
+        }
+
+        function copyToClipboard(text, event) {
+            event.stopPropagation();
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(`Copied ${text} to clipboard!`);
+            } catch (err) {
+                showToast('Failed to copy', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function applyFilters() {
+            const keyword = document.getElementById('filter-keyword').value.toLowerCase();
+            const category = document.getElementById('filter-category').value;
+            const minBl = parseInt(document.getElementById('filter-min-bl').value);
+            const minRef = parseInt(document.getElementById('filter-min-ref').value);
+            const minAge = parseInt(document.getElementById('filter-min-age').value);
+            const maxPrice = parseInt(document.getElementById('filter-max-price').value);
+            const health = document.getElementById('filter-health').value;
+            const sortBy = document.getElementById('sort-by').value;
+
+            let filtered = domains.filter(d => {
+                if (showWatchlistOnly && !watchlist.includes(d.name)) return false;
+                if (keyword && !d.name.toLowerCase().includes(keyword)) return false;
+                if (currentTldFilter !== 'all' && d.tld !== currentTldFilter) return false;
+                if (category !== 'all' && d.category !== category) return false;
+                if (d.bl < minBl) return false;
+                if (d.ref < minRef) return false;
+                if (d.age < minAge) return false;
+                if (maxPrice < 10000 && d.value > maxPrice) return false;
+                if (health !== 'all' && d.health !== health) return false;
+                return true;
+            });
+
+            // Sorting
+            filtered.sort((a, b) => {
+                if (sortBy === 'value-desc') return b.value - a.value;
+                if (sortBy === 'bl-desc') return b.bl - a.bl;
+                if (sortBy === 'ref-desc') return b.ref - a.ref;
+                if (sortBy === 'age-desc') return b.age - a.age;
+                if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+                return 0;
+            });
+
+            document.getElementById('result-count').innerText = filtered.length;
+            renderResults(filtered);
+        }
+
+        function renderResults(data) {
+            const container = document.getElementById('view-container');
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="h-96 flex flex-col items-center justify-center text-center space-y-3">
+                        <div class="bg-dark-900 p-4 rounded-full text-slate-500 text-3xl">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-slate-300">No matching domains found</h3>
+                        <p class="text-xs text-slate-500 max-w-sm">Try loosening your filters, lowering minimum backlinks, or clearing keyword searches.</p>
+                        <button onclick="resetFilters()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-medium hover:bg-indigo-500 transition">Reset All Filters</button>
+                    </div>
+                `;
+                return;
+            }
+
+            if (currentView === 'table') {
+                let html = `
+                    <div class="bg-dark-900 border border-slate-800 rounded-xl overflow-x-auto shadow-xl">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-dark-950/80 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                                    <th class="p-3.5">Domain</th>
+                                    <th class="p-3.5">Category</th>
+                                    <th class="p-3.5 text-right">Backlinks</th>
+                                    <th class="p-3.5 text-right">Ref. Doms</th>
+                                    <th class="p-3.5 text-center">Age</th>
+                                    <th class="p-3.5 text-center">SEO Health</th>
+                                    <th class="p-3.5 text-right">Est. Value</th>
+                                    <th class="p-3.5 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/60">
+                `;
+
+                data.forEach(d => {
+                    const isStarred = watchlist.includes(d.name);
+                    const healthBadge = d.health === 'Clean' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                                        d.health === 'Warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+                    
+                    html += `
+                        <tr onclick="openAuditModal(${d.id})" class="hover:bg-dark-800/50 cursor-pointer transition group">
+                            <td class="p-3.5 font-medium text-white flex items-center gap-2.5">
+                                <button onclick="toggleWatchlist('${d.name}', event)" class="text-slate-500 hover:text-amber-400 transition">
+                                    <i class="fa-${isStarred ? 'solid' : 'regular'} fa-bookmark ${isStarred ? 'text-amber-400' : ''}"></i>
+                                </button>
+                                <span class="mono font-semibold text-slate-100 group-hover:text-indigo-400 transition">${d.name}</span>
+                                <span class="text-[10px] bg-dark-950 border border-slate-700 px-1.5 py-0.5 rounded text-slate-400">${d.status}</span>
+                            </td>
+                            <td class="p-3.5 text-slate-300">${d.category}</td>
+                            <td class="p-3.5 text-right font-mono text-slate-300 font-medium">${d.bl.toLocaleString()}</td>
+                            <td class="p-3.5 text-right font-mono text-slate-400">${d.ref.toLocaleString()}</td>
+                            <td class="p-3.5 text-center font-mono text-slate-300">${d.age} yrs</td>
+                            <td class="p-3.5 text-center">
+                                <span class="border px-2 py-0.5 rounded-full text-[10px] font-semibold ${healthBadge}">${d.health}</span>
+                            </td>
+                            <td class="p-3.5 text-right font-mono font-bold text-emerald-400">$${d.value.toLocaleString()}</td>
+                            <td class="p-3.5 text-center" onclick="event.stopPropagation()">
+                                <div class="flex items-center justify-center space-x-1.5">
+                                    <button onclick="copyToClipboard('${d.name}', event)" title="Copy Domain" class="bg-dark-950 hover:bg-indigo-600 hover:text-white text-slate-300 p-1.5 rounded border border-slate-700 transition">
+                                        <i class="fa-solid fa-copy text-xs"></i>
+                                    </button>
+                                    <a href="https://web.archive.org/web/20230000000000*/${d.name}" target="_blank" title="Wayback Machine" class="bg-dark-950 hover:bg-amber-600 hover:text-white text-slate-300 p-1.5 rounded border border-slate-700 transition">
+                                        <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                                    </a>
+                                    <button onclick="openAuditModal(${d.id})" title="Full Audit" class="bg-dark-950 hover:bg-emerald-600 hover:text-white text-slate-300 p-1.5 rounded border border-slate-700 transition">
+                                        <i class="fa-solid fa-magnifying-glass-chart text-xs"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div>`;
+                container.innerHTML = html;
+            } else {
+                // Grid View
+                let html = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">`;
+                data.forEach(d => {
+                    const isStarred = watchlist.includes(d.name);
+                    const healthBadge = d.health === 'Clean' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                                        d.health === 'Warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+                    
+                    html += `
+                        <div onclick="openAuditModal(${d.id})" class="bg-dark-900 border border-slate-800 hover:border-slate-700 rounded-xl p-5 flex flex-col justify-between cursor-pointer transition shadow-lg group">
+                            <div class="space-y-3">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="text-[10px] text-indigo-400 font-mono bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded">${d.category}</span>
+                                        <h3 class="font-bold text-base text-white mono mt-1.5 group-hover:text-indigo-400 transition">${d.name}</h3>
+                                    </div>
+                                    <button onclick="toggleWatchlist('${d.name}', event)" class="text-slate-500 hover:text-amber-400 transition p-1">
+                                        <i class="fa-${isStarred ? 'solid' : 'regular'} fa-bookmark text-lg ${isStarred ? 'text-amber-400' : ''}"></i>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 bg-dark-950 p-2.5 rounded-lg border border-slate-800 text-center">
+                                    <div>
+                                        <div class="text-[10px] text-slate-500">Backlinks</div>
+                                        <div class="text-xs font-mono font-bold text-slate-200 mt-0.5">${d.bl.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-slate-500">Ref Doms</div>
+                                        <div class="text-xs font-mono font-bold text-slate-200 mt-0.5">${d.ref}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-slate-500">Archive Age</div>
+                                        <div class="text-xs font-mono font-bold text-slate-200 mt-0.5">${d.age} yrs</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between text-xs pt-1">
+                                    <span class="border px-2 py-0.5 rounded-full text-[10px] font-semibold ${healthBadge}">${d.health}</span>
+                                    <span class="text-emerald-400 font-mono font-bold text-sm">$${d.value.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div class="border-t border-slate-800 mt-4 pt-3 flex items-center justify-between text-xs" onclick="event.stopPropagation()">
+                                <span class="text-slate-400 text-[11px]">${d.status}</span>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="copyToClipboard('${d.name}', event)" class="bg-dark-950 hover:bg-indigo-600 hover:text-white text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">Copy</button>
+                                    <a href="https://web.archive.org/web/20230000000000*/${d.name}" target="_blank" class="bg-dark-950 hover:bg-amber-600 hover:text-white text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">Wayback</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+                container.innerHTML = html;
+            }
+        }
+
+        function openAuditModal(id) {
+            const d = domains.find(x => x.id === id);
+            if (!d) return;
+
+            document.getElementById('modal-domain-title').innerText = d.name;
+            document.getElementById('modal-est-value').innerText = '$' + d.value.toLocaleString();
+            document.getElementById('modal-bl').innerText = d.bl.toLocaleString();
+            document.getElementById('modal-ref').innerText = d.ref.toLocaleString();
+            document.getElementById('modal-age').innerText = d.age + ' yrs';
+
+            const healthDesc = document.getElementById('modal-health-desc');
+            if (d.health === 'Clean') {
+                healthDesc.innerHTML = `<span class="text-emerald-400 font-semibold">Clean Link Profile:</span> The ratio of referring domains to total backlinks is organic and healthy. No spammy anchor text clusters detected in recent historical snapshots. Excellent candidate for authority retention.`;
+            } else if (d.health === 'Warning') {
+                healthDesc.innerHTML = `<span class="text-amber-400 font-semibold">Moderate Risk:</span> Some links originate from directories or low-trust blogs. Recommend a thorough backlink audit before launching 301 redirects or content relaunch.`;
+            } else {
+                healthDesc.innerHTML = `<span class="text-rose-400 font-semibold">High Spam Risk:</span> High ratio of toxic backlinks or history of redirect abuse / spam indexing. High chance of Google penalty inheritance. Proceed with caution.`;
+            }
+
+            document.getElementById('modal-link-wayback').href = `https://web.archive.org/web/20230000000000*/${d.name}`;
+            document.getElementById('modal-link-uspto').href = `https://tmsearch.uspto.gov/bin/showfield?f=toc&state=4fq22l.1.1&p_search=search+box&p_L=50&a_default=search&p_cat=50%2B&p_field=co&a_search=Submit+Query&p_meta=s%3D${encodeURIComponent(d.name.split('.')[0])}`;
+            document.getElementById('modal-link-whois').href = `https://www.godaddy.com/domainsearch/find?checkAvail=1&domainToCheck=${d.name}`;
+
+            document.getElementById('audit-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('audit-modal').classList.add('hidden');
+        }
+
+        // CSV Upload & Export Logic
+        function triggerCsvUpload() {
+            document.getElementById('csv-file-input').click();
+            document.getElementById('csv-menu').classList.add('hidden');
+        }
+
+        function handleCsvUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                let addedCount = 0;
+
+                lines.forEach((line, index) => {
+                    if (index === 0 || !line.trim()) return; // skip header or empty
+                    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                    if (cols.length >= 1) {
+                        const name = cols[0];
+                        const tld = '.' + name.split('.').pop();
+                        domains.push({
+                            id: domains.length + 100,
+                            name: name,
+                            tld: tld,
+                            category: cols[1] || 'General / Brandable',
+                            bl: parseInt(cols[2]) || Math.floor(Math.random() * 1500) + 100,
+                            ref: parseInt(cols[3]) || Math.floor(Math.random() * 250) + 20,
+                            age: parseInt(cols[4]) || Math.floor(Math.random() * 8) + 1,
+                            value: parseInt(cols[5]) || Math.floor(Math.random() * 3000) + 500,
+                            health: cols[6] || 'Clean',
+                            status: cols[7] || 'Pending Delete'
+                        });
+                        addedCount++;
+                    }
+                });
+
+                applyFilters();
+                showToast(`Successfully imported ${addedCount} custom domains!`);
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function exportCsv() {
+            document.getElementById('csv-menu').classList.add('hidden');
+            let csvContent = "data:text/csv;charset=utf-8,Domain,Category,Backlinks,ReferringDomains,AgeYears,EstimatedValue,Health,Status\n";
+            
+            domains.forEach(d => {
+                csvContent += `"${d.name}","${d.category}",${d.bl},${d.ref},${d.age},${d.value},"${d.health}","${d.status}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "expired_domains_export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Exported filtered domain list to CSV!");
+        }
+
+        function resetMockData() {
+            document.getElementById('csv-menu').classList.add('hidden');
+            domains = [...defaultDomains];
+            applyFilters();
+            showToast("Reset to default domain dataset.", "info");
+        }
+    </script>
+</body>
+</html>
