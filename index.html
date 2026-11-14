@@ -1,874 +1,285 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expired Domain Discovery & Intelligence Tool</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            800: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalshi × Polymarket price comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F7; --panel:#FFFFFF; --ink:#16212C; --mute:#5E6B78; --line:#D9DFE6;
+  --kal:#12A150; --poly:#2B59FF; --gap:#D98A1F; --good:#0E7A3E; --warn:#B42318;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161D; --panel:#17212B; --ink:#E6ECF2; --mute:#93A1AF; --line:#26333F;
+    --kal:#3DD68C; --poly:#7B97FF; --gap:#F0B04F; --good:#4ADE80; --warn:#F97066;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 "Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1040px;margin:0 auto;padding:28px 18px 64px}
+h1{font-size:26px;line-height:1.2;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 20px;max-width:62ch}
+.k{color:var(--kal);font-weight:600}.p{color:var(--poly);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.controls label{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:14px}
+input[type=search],input[type=text],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+input[type=search]{flex:1 1 220px;min-width:160px}
+button{font:inherit;font-weight:600;color:#fff;background:var(--ink);border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button{color:var(--bg)}}
+button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:2px solid var(--poly);outline-offset:2px}
+details{margin:0 0 12px;color:var(--mute);font-size:14px}
+details summary{cursor:pointer}
+details div{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+details input{flex:1 1 320px}
+.status{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;color:var(--mute);font-size:14px;margin:0 2px 10px}
+.err{background:color-mix(in srgb,var(--warn) 10%,var(--panel));border:1px solid var(--warn);color:var(--ink);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.err b{color:var(--warn)}
+.row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) 108px;gap:8px 22px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px}
+.q{font-weight:600;line-height:1.35}
+.q2{color:var(--mute);font-size:13px;margin-top:2px}
+.meta{color:var(--mute);font-size:12.5px;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.meta a{color:inherit}
+.track{position:relative;height:28px}
+.track::before{content:"";position:absolute;left:0;right:0;top:13px;height:2px;background:var(--line);border-radius:1px}
+.span{position:absolute;top:11px;height:6px;background:var(--gap);border-radius:3px;opacity:.9}
+.dot{position:absolute;top:6px;width:16px;height:16px;margin-left:-8px;border-radius:50%;border:2px solid var(--panel)}
+.dot.k{background:var(--kal)}.dot.p{background:var(--poly)}
+.prices{display:flex;justify-content:space-between;font-size:13px;margin-top:2px}
+.gapbox{text-align:right}
+.gapnum{font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.01em}
+.gaplbl{font-size:12.5px;color:var(--mute)}
+.edge{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:var(--good);border:1px solid var(--good);border-radius:999px;padding:1px 8px}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--mute)}
+.note{color:var(--mute);font-size:13px;margin-top:20px;max-width:75ch}
+@media (max-width:720px){
+  .row{grid-template-columns:1fr 92px}
+  .row .mid{grid-column:1 / -1;order:3}
+}
+@media (prefers-reduced-motion:no-preference){.span{transition:left .3s,width .3s}.dot{transition:left .3s}}
+</style>
 </head>
-<body class="bg-dark-950 text-slate-100 min-h-screen flex flex-col antialiased">
+<body>
+<main>
+  <h1>Kalshi × Polymarket price comparison</h1>
+  <p class="sub">Pulls open markets from both exchanges, pairs the ones that look like the same question, and shows where the YES prices disagree.</p>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+  <div class="controls">
+    <button id="refresh">Refresh data</button>
+    <input type="search" id="search" placeholder="Filter by keyword, e.g. fed, bitcoin, senate" aria-label="Filter markets">
+    <label>Sort
+      <select id="sort">
+        <option value="gap">Largest gap</option>
+        <option value="edge">Best edge</option>
+        <option value="vol">Volume</option>
+        <option value="match">Match quality</option>
+      </select>
+    </label>
+    <label>Min match <input type="range" id="thresh" min="0.3" max="0.95" step="0.05" value="0.55"> <span id="threshVal">55%</span></label>
+    <label><input type="checkbox" id="auto"> Auto-refresh every minute</label>
+  </div>
 
-    <!-- Top Navigation Header -->
-    <header class="bg-dark-900 border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
-                <i class="fa-solid fa-radar text-xl"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg tracking-tight text-white flex items-center gap-2">
-                    DomainScout <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono">v2.4 PRO</span>
-                </h1>
-                <p class="text-xs text-slate-400 hidden sm:block">Automated Expired Domain Intelligence & Drop-Catch Analyzer</p>
-            </div>
+
+  <div id="errors"></div>
+  <div class="status"><span id="status">Loading…</span><span id="summary"></span></div>
+  <div id="list"></div>
+
+  <p class="note">Pairs are matched by wording and close date, so check each market’s resolution rules before treating a gap as real. “Edge” is the gross gain per $1 from buying YES on one exchange and NO on the other at the quoted ask prices, before fees, slippage and capital lockup.</p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const state = { kalshi: [], poly: [], pairs: [], timer: null, errors: [], updated: null };
+
+/* ---------- fetching ---------- */
+// Requests go to the local proxy (server.js), which forwards them to the exchanges.
+async function getJSON(url) {
+  const r = await fetch(url, { headers: { accept: 'application/json' } });
+  if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+  return r.json();
+}
+const num = v => (v === null || v === undefined || v === '' ? null : Number.isFinite(+v) ? +v : null);
+// Kalshi returns cents (yes_bid) or dollar strings (yes_bid_dollars) depending on API version
+const kd = (m, k) => { const d = num(m[k + '_dollars']); if (d !== null) return d; const c = num(m[k]); return c === null ? null : c / 100; };
+
+async function fetchKalshi() {
+  const base = '/api/kalshi/markets';
+  const out = []; let cursor = '';
+  for (let i = 0; i < 4; i++) {
+    const q = new URLSearchParams({ status: 'open', limit: '1000', mve_filter: 'exclude' });
+    if (cursor) q.set('cursor', cursor);
+    const d = await getJSON(base + '?' + q);
+    out.push(...(d.markets || []));
+    cursor = d.cursor;
+    if (!cursor) break;
+  }
+  return out.map(m => {
+    const bid = kd(m, 'yes_bid'), ask = kd(m, 'yes_ask'), last = kd(m, 'last_price');
+    const mid = (bid !== null && ask !== null && ask > 0 && ask - bid <= 0.15) ? (bid + ask) / 2 : last;
+    if (!mid) return null;
+    const sub = m.yes_sub_title || '';
+    const title = m.title || '';
+    const text = sub && !title.toLowerCase().includes(sub.toLowerCase()) ? `${title} ${sub}` : title;
+    return {
+      text, title: sub && sub !== title ? `${title} — ${sub}` : title, mid,
+      bid: bid > 0 ? bid : null, ask: ask > 0 && ask < 1 ? ask : null,
+      vol: num(m.volume_24h) ?? num(m.volume_24h_fp) ?? 0,
+      end: Date.parse(m.close_time || m.expiration_time || '') || null,
+      url: 'https://kalshi.com/markets/' + String(m.event_ticker || m.ticker).toLowerCase(),
+      tok: tokens(text)
+    };
+  }).filter(Boolean);
+}
+
+async function fetchPoly() {
+  const base = '/api/poly/markets';
+  const out = [];
+  for (let off = 0; off < 1000; off += 500) {
+    const q = new URLSearchParams({ active: 'true', closed: 'false', limit: '500', offset: off, order: 'volume24hr', ascending: 'false' });
+    const arr = await getJSON(base + '?' + q);
+    out.push(...arr);
+    if (arr.length < 500) break;
+  }
+  const parse = v => { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch { return null; } };
+  return out.map(m => {
+    const outs = parse(m.outcomes), prices = parse(m.outcomePrices);
+    if (!Array.isArray(outs) || !Array.isArray(prices)) return null;
+    const yi = outs.findIndex(o => String(o).toLowerCase() === 'yes');
+    if (yi < 0) return null;
+    const last = num(prices[yi]);
+    const bid = yi === 0 ? num(m.bestBid) : null, ask = yi === 0 ? num(m.bestAsk) : null;
+    const mid = (bid !== null && ask !== null && ask > 0 && ask - bid <= 0.15) ? (bid + ask) / 2 : last;
+    if (!mid) return null;
+    return {
+      text: m.question || '', title: m.question || '', mid,
+      bid: bid > 0 ? bid : null, ask: ask > 0 && ask < 1 ? ask : null,
+      vol: num(m.volume24hr) ?? 0,
+      end: Date.parse(m.endDate || '') || null,
+      url: 'https://polymarket.com/market/' + m.slug,
+      tok: tokens(m.question || '')
+    };
+  }).filter(Boolean);
+}
+
+/* ---------- matching ---------- */
+const STOP = new Set('will the a an of in on at to be by for and or is are before after than this that with as it its who what when does do have has from yes no'.split(' '));
+function tokens(s) {
+  const set = new Set();
+  String(s).toLowerCase().replace(/(\d),(\d)/g, '$1$2').replace(/[^a-z0-9.%]+/g, ' ').split(' ').forEach(t => {
+    t = t.replace(/^\.+|\.+$/g, '');
+    if (!t || STOP.has(t)) return;
+    if (t.length > 3 && t.endsWith('s') && !/\d/.test(t)) t = t.slice(0, -1);
+    set.add(t);
+  });
+  return set;
+}
+function score(a, b) {
+  if (a.end && b.end && Math.abs(a.end - b.end) > 45 * 864e5) return 0;
+  let inter = 0; a.tok.forEach(t => { if (b.tok.has(t)) inter++; });
+  const union = a.tok.size + b.tok.size - inter;
+  if (!union) return 0;
+  let s = inter / union;
+  const na = [...a.tok].filter(t => /\d/.test(t)), nb = [...b.tok].filter(t => /\d/.test(t));
+  if (na.length && nb.length && !(na.every(t => b.tok.has(t)) && nb.every(t => a.tok.has(t)))) s *= 0.5;
+  return s;
+}
+function matchAll() {
+  const K = state.kalshi, P = state.poly, idx = new Map();
+  K.forEach((k, i) => k.tok.forEach(t => { if (!idx.has(t)) idx.set(t, []); idx.get(t).push(i); }));
+  const cands = [];
+  P.forEach((p, pi) => {
+    const seen = new Map();
+    p.tok.forEach(t => {
+      const l = idx.get(t);
+      if (!l || l.length > K.length * 0.05) return;
+      l.forEach(i => seen.set(i, (seen.get(i) || 0) + 1));
+    });
+    seen.forEach((c, ki) => { if (c < 2) return; const s = score(p, K[ki]); if (s >= 0.3) cands.push({ pi, ki, s }); });
+  });
+  cands.sort((a, b) => b.s - a.s);
+  const uk = new Set(), up = new Set(); state.pairs = [];
+  for (const c of cands) {
+    if (uk.has(c.ki) || up.has(c.pi)) continue;
+    uk.add(c.ki); up.add(c.pi);
+    const k = K[c.ki], p = P[c.pi];
+    const gap = p.mid - k.mid;
+    const a = (p.bid !== null && k.ask !== null) ? p.bid - k.ask : null; // buy Kalshi YES, Polymarket NO
+    const b = (k.bid !== null && p.ask !== null) ? k.bid - p.ask : null; // buy Polymarket YES, Kalshi NO
+    let edge = null, dir = '';
+    if (a !== null && a > 0 && (b === null || a >= b)) { edge = a; dir = 'Buy YES on Kalshi, NO on Polymarket'; }
+    else if (b !== null && b > 0) { edge = b; dir = 'Buy YES on Polymarket, NO on Kalshi'; }
+    state.pairs.push({ k, p, s: c.s, gap, edge, dir, vol: k.vol + p.vol });
+  }
+}
+
+/* ---------- rendering ---------- */
+const cents = x => Math.round(x * 100) + '¢';
+function render() {
+  const th = +$('#thresh').value, term = $('#search').value.trim().toLowerCase(), sort = $('#sort').value;
+  $('#threshVal').textContent = Math.round(th * 100) + '%';
+  let rows = state.pairs.filter(r => r.s >= th && (!term || (r.k.title + ' ' + r.p.title).toLowerCase().includes(term)));
+  const key = { gap: r => Math.abs(r.gap), edge: r => r.edge ?? -1, vol: r => r.vol, match: r => r.s }[sort];
+  rows.sort((a, b) => key(b) - key(a));
+  const edges = rows.filter(r => r.edge).length;
+  const big = rows.length ? Math.max(...rows.map(r => Math.abs(r.gap))) : 0;
+  $('#summary').textContent = rows.length ? `${rows.length} pairs · largest gap ${(big * 100).toFixed(1)} pts · ${edges} with positive edge` : '';
+  $('#errors').innerHTML = state.errors.map(e => `<div class="err"><b>${esc(e.name)} failed to load.</b> ${esc(e.msg)}${/fetch|network/i.test(e.msg) ? ' Is the proxy running? Start it with “node server.js” and open http://localhost:3000.' : ''}</div>`).join('');
+  if (!rows.length) {
+    $('#list').innerHTML = `<div class="empty">${state.kalshi.length || state.poly.length ? 'No matched pairs at this match level. Lower “Min match” or clear the filter.' : 'No data yet. Select “Refresh data”.'}</div>`;
+    return;
+  }
+  $('#list').innerHTML = rows.slice(0, 200).map(r => {
+    const lo = Math.min(r.k.mid, r.p.mid) * 100, hi = Math.max(r.k.mid, r.p.mid) * 100;
+    const sign = r.gap > 0 ? '+' : r.gap < 0 ? '−' : '';
+    const same = r.k.title.toLowerCase() === r.p.title.toLowerCase();
+    return `<div class="row">
+      <div>
+        <div class="q">${esc(r.k.title)}</div>
+        ${same ? '' : `<div class="q2">${esc(r.p.title)}</div>`}
+        <div class="meta"><span>Match ${Math.round(r.s * 100)}%</span><span>24h volume $${Math.round(r.vol).toLocaleString()}</span>
+          <a href="${esc(r.k.url)}" target="_blank" rel="noopener">Kalshi market</a><a href="${esc(r.p.url)}" target="_blank" rel="noopener">Polymarket market</a></div>
+      </div>
+      <div class="mid">
+        <div class="track" role="img" aria-label="Kalshi ${cents(r.k.mid)}, Polymarket ${cents(r.p.mid)}">
+          <div class="span" style="left:${lo}%;width:${hi - lo}%"></div>
+          <div class="dot k" style="left:${r.k.mid * 100}%"></div>
+          <div class="dot p" style="left:${r.p.mid * 100}%"></div>
         </div>
-
-        <div class="flex items-center space-x-3">
-            <!-- View Mode Switcher -->
-            <div class="bg-dark-800 p-1 rounded-lg border border-slate-700 flex items-center">
-                <button onclick="switchView('table')" id="btn-view-table" class="px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-table-list"></i> Table
-                </button>
-                <button onclick="switchView('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-grip"></i> Cards
-                </button>
-            </div>
-
-            <!-- Watchlist Tab Button -->
-            <button onclick="toggleWatchlistTab()" id="btn-watchlist-toggle" class="relative bg-dark-800 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2">
-                <i class="fa-solid fa-bookmark text-amber-400"></i>
-                <span class="hidden sm:inline">Watchlist</span>
-                <span id="watchlist-badge" class="bg-amber-500 text-dark-950 px-1.5 py-0.2 rounded-full font-bold text-[10px]">0</span>
-            </button>
-
-            <!-- CSV Import / Export Dropdown -->
-            <div class="relative">
-                <button onclick="toggleMenu('csv-menu')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2 shadow-sm">
-                    <i class="fa-solid fa-file-arrow-down"></i> <span class="hidden md:inline">Data IO</span> <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                </button>
-                <div id="csv-menu" class="hidden absolute right-0 mt-2 w-48 bg-dark-900 border border-slate-700 rounded-lg shadow-2xl py-1 z-50">
-                    <button onclick="triggerCsvUpload()" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-dark-800 flex items-center gap-2">
-                        <i class="fa-solid fa-upload text-indigo-400"></i> Import Custom CSV
-                    </button>
-                    <button onclick="exportCsv()" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-dark-800 flex items-center gap-2">
-                        <i class="fa-solid fa-download text-emerald-400"></i> Export Filtered CSV
-                    </button>
-                    <button onclick="resetMockData()" class="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-dark-800 flex items-center gap-2 border-t border-slate-800">
-                        <i class="fa-solid fa-rotate-right"></i> Reset Default Data
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Hidden file input for CSV upload -->
-    <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="handleCsvUpload(event)">
-
-    <!-- Main Content Layout -->
-    <main class="flex-grow px-4 lg:px-8 py-6 max-w-7xl mx-auto w-full space-y-6">
-
-        <!-- Stats Overview Bar -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-dark-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-400">Total Scanned</p>
-                    <h3 id="stat-total" class="text-2xl font-bold text-white mt-1">14</h3>
-                </div>
-                <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-lg border border-indigo-500/20">
-                    <i class="fa-solid fa-globe text-lg"></i>
-                </div>
-            </div>
-            <div class="bg-dark-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-400">High Value Backlinks</p>
-                    <h3 id="stat-high-value" class="text-2xl font-bold text-emerald-400 mt-1">4</h3>
-                </div>
-                <div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-lg border border-emerald-500/20">
-                    <i class="fa-solid fa-chart-line text-lg"></i>
-                </div>
-            </div>
-            <div class="bg-dark-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-400">Watchlisted</p>
-                    <h3 id="stat-watchlist" class="text-2xl font-bold text-amber-400 mt-1">0</h3>
-                </div>
-                <div class="bg-amber-500/10 text-amber-400 p-3 rounded-lg border border-amber-500/20">
-                    <i class="fa-solid fa-bookmark text-lg"></i>
-                </div>
-            </div>
-            <div class="bg-dark-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-slate-400">Avg Backlinks</p>
-                    <h3 id="stat-avg-bl" class="text-2xl font-bold text-indigo-300 mt-1">840</h3>
-                </div>
-                <div class="bg-blue-500/10 text-blue-400 p-3 rounded-lg border border-blue-500/20">
-                    <i class="fa-solid fa-network-wired text-lg"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter & Search Toolbar -->
-        <div class="bg-dark-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
-            <div class="flex flex-col md:flex-row gap-3 items-center justify-between">
-                <!-- Search Input -->
-                <div class="relative w-full md:w-96">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-search text-xs"></i>
-                    </span>
-                    <input type="text" id="search-input" oninput="filterDomains()" placeholder="Search domains or keywords (e.g. apexcapital)..." class="w-full bg-dark-950 text-slate-200 pl-10 pr-4 py-2 text-xs border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 transition">
-                </div>
-
-                <!-- Quick Filters & Toggles -->
-                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                    <select id="filter-tld" onchange="filterDomains()" class="bg-dark-950 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-indigo-500 transition">
-                        <option value="">All TLDs (.com, .co, etc)</option>
-                        <option value=".com">.com</option>
-                        <option value=".co">.co</option>
-                        <option value=".org">.org</option>
-                        <option value=".net">.net</option>
-                        <option value=".io">.io</option>
-                    </select>
-
-                    <select id="sort-select" onchange="filterDomains()" class="bg-dark-950 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-indigo-500 transition">
-                        <option value="value-desc">Sort: Highest Est. Value</option>
-                        <option value="backlinks-desc">Sort: Most Backlinks</option>
-                        <option value="name-asc">Sort: Alphabetical (A-Z)</option>
-                    </select>
-
-                    <button onclick="resetFilters()" class="bg-dark-800 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-rotate-left"></i> Reset
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Display Container (Table or Grid View) -->
-        <div class="bg-dark-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden">
-            <!-- Table View -->
-            <div id="view-table-container" class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-dark-950/60 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                            <th class="py-3 px-4">Domain Name</th>
-                            <th class="py-3 px-4">Backlinks</th>
-                            <th class="py-3 px-4">Ref. Domains</th>
-                            <th class="py-3 px-4">Est. Reg Cost</th>
-                            <th class="py-3 px-4">Est. Value</th>
-                            <th class="py-3 px-4">Niche / Status</th>
-                            <th class="py-3 px-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="domain-table-body" class="divide-y divide-slate-800/60 text-xs">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Grid Cards View (Hidden by default) -->
-            <div id="view-grid-container" class="hidden p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Populated by JavaScript -->
-            </div>
-
-            <!-- Empty State -->
-            <div id="empty-state" class="hidden py-16 text-center">
-                <div class="bg-dark-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-3 text-lg">
-                    <i class="fa-solid fa-folder-open"></i>
-                </div>
-                <h4 class="text-sm font-semibold text-white">No matching domains found</h4>
-                <p class="text-xs text-slate-400 mt-1">Try adjusting your search query or TLD filter criteria.</p>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Domain Details / Outreach Modal -->
-    <div id="domain-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-dark-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative space-y-5 animate-in fade-in duration-200">
-            <div class="flex items-start justify-between border-b border-slate-800 pb-4">
-                <div>
-                    <span id="modal-tld-badge" class="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono font-semibold">.CO</span>
-                    <h3 id="modal-domain-title" class="text-xl font-bold text-white mt-1 mono">apexcapital.co</h3>
-                </div>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white bg-dark-800 p-2 rounded-lg transition">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Backlinks</p>
-                    <p id="modal-backlinks" class="text-base font-bold text-white mt-1 mono">1,500</p>
-                </div>
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Ref Domains</p>
-                    <p id="modal-refdomains" class="text-base font-bold text-white mt-1 mono">290</p>
-                </div>
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Est. Reg Cost</p>
-                    <p id="modal-cost" class="text-base font-bold text-emerald-400 mt-1 mono">$25/yr</p>
-                </div>
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Est. Value</p>
-                    <p id="modal-value" class="text-base font-bold text-indigo-400 mt-1 mono">$1,850</p>
-                </div>
-            </div>
-
-            <!-- Outreach Pitch Generator Section -->
-            <div class="space-y-3 bg-dark-950 p-4 rounded-xl border border-slate-800">
-                <div class="flex items-center justify-between">
-                    <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                        <i class="fa-solid fa-envelope-open-text text-indigo-400"></i> Generated Outreach Pitch Template
-                    </label>
-                    <button onclick="copyPitch()" class="text-[11px] bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-md transition flex items-center gap-1">
-                        <i class="fa-solid fa-copy"></i> Copy Pitch
-                    </button>
-                </div>
-                <textarea id="modal-pitch-text" rows="4" readonly class="w-full bg-dark-900 text-slate-300 text-xs p-3 rounded-lg border border-slate-700/80 font-mono focus:outline-none resize-none"></textarea>
-                <p class="text-[11px] text-slate-500 italic">Tip: Tailor this template to focus on redirect value and backlink equity rather than explicit brand ransom.</p>
-            </div>
-
-            <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
-                <button onclick="closeModal()" class="bg-dark-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-medium transition">
-                    Close
-                </button>
-                <a id="modal-registrar-link" href="#" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa-solid fa-cart-shopping"></i> Register Domain Now
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Backlinks & References Inspector Modal -->
-    <div id="backlinks-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-dark-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative space-y-5 animate-in fade-in duration-200">
-            <div class="flex items-start justify-between border-b border-slate-800 pb-4">
-                <div>
-                    <span class="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-mono font-semibold">BACKLINK AUDIT</span>
-                    <h3 id="backlinks-modal-title" class="text-xl font-bold text-white mt-1 mono">apexcapital.co</h3>
-                </div>
-                <button onclick="closeBacklinksModal()" class="text-slate-400 hover:text-white bg-dark-800 p-2 rounded-lg transition">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Total Backlinks</p>
-                    <p id="backlinks-modal-count" class="text-base font-bold text-white mt-1 mono">1,500</p>
-                </div>
-                <div class="bg-dark-950 p-3 rounded-xl border border-slate-800">
-                    <p class="text-[10px] text-slate-400 uppercase font-medium">Referring Domains</p>
-                    <p id="backlinks-modal-refcount" class="text-base font-bold text-indigo-400 mt-1 mono">290</p>
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Sample Referring Domains & Anchor Context</h4>
-                <div id="backlinks-list-container" class="bg-dark-950 rounded-xl border border-slate-800 max-h-64 overflow-y-auto divide-y divide-slate-800/60 text-xs">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <div class="flex items-center justify-end pt-2 border-t border-slate-800">
-                <button onclick="closeBacklinksModal()" class="bg-dark-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-medium transition">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="bg-dark-900 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500 mt-auto">
-        DomainScout Intelligence Suite &bull; Automated Expired Domain & Arbitrage Scanner
-    </footer>
-
-    <!-- JavaScript Application Logic -->
-    <script>
-        // Initial Dataset (Including apexcapital.co)
-        const defaultDomains = [
-            {
-                id: 1,
-                name: "apexcapital.co",
-                tld: ".co",
-                backlinks: 1500,
-                refDomains: 290,
-                value: 1850,
-                niche: "Finance / Sports Investing",
-                watchlisted: false
-            },
-            {
-                id: 2,
-                name: "apexcapital.org",
-                tld: ".org",
-                backlinks: 840,
-                refDomains: 145,
-                value: 1200,
-                niche: "Venture Capital",
-                watchlisted: false
-            },
-            {
-                id: 3,
-                name: "stantonlogistics.com",
-                tld: ".com",
-                backlinks: 2100,
-                refDomains: 410,
-                value: 2950,
-                niche: "Freight & Trucking",
-                watchlisted: false
-            },
-            {
-                id: 4,
-                name: "helena-properties.com",
-                tld: ".com",
-                backlinks: 620,
-                refDomains: 98,
-                value: 950,
-                niche: "Real Estate",
-                watchlisted: false
-            },
-            {
-                id: 5,
-                name: "montanaseedtech.io",
-                tld: ".io",
-                backlinks: 1150,
-                refDomains: 230,
-                value: 2400,
-                niche: "AgTech & Software",
-                watchlisted: false
-            },
-            {
-                id: 6,
-                name: "bozemanbuilders.co",
-                tld: ".co",
-                backlinks: 430,
-                refDomains: 75,
-                value: 650,
-                niche: "Construction",
-                watchlisted: false
-            },
-            {
-                id: 7,
-                name: "peakwealthgroup.net",
-                tld: ".net",
-                backlinks: 920,
-                refDomains: 180,
-                value: 1100,
-                niche: "Financial Planning",
-                watchlisted: false
-            },
-            {
-                id: 8,
-                name: "bigskymachinery.com",
-                tld: ".com",
-                backlinks: 1340,
-                refDomains: 260,
-                value: 1750,
-                niche: "Industrial Hardware",
-                watchlisted: false
-            },
-            {
-                id: 9,
-                name: "vanguardlogistics.co",
-                tld: ".co",
-                backlinks: 780,
-                refDomains: 125,
-                value: 980,
-                niche: "Supply Chain",
-                watchlisted: false
-            },
-            {
-                id: 10,
-                name: "cascadeenergy.org",
-                tld: ".org",
-                backlinks: 1650,
-                refDomains: 310,
-                value: 2100,
-                niche: "Renewable Power",
-                watchlisted: false
-            },
-            {
-                id: 11,
-                name: "goldengatecapital.co",
-                tld: ".co",
-                backlinks: 1950,
-                refDomains: 380,
-                value: 3200,
-                niche: "Private Equity",
-                watchlisted: false
-            },
-            {
-                id: 12,
-                name: "redrockrealty.net",
-                tld: ".net",
-                backlinks: 510,
-                refDomains: 88,
-                value: 720,
-                niche: "Commercial Property",
-                watchlisted: false
-            },
-            {
-                id: 13,
-                name: "summitcapital.io",
-                tld: ".io",
-                backlinks: 1420,
-                refDomains: 275,
-                value: 2600,
-                niche: "Fintech Startup",
-                watchlisted: false
-            },
-            {
-                id: 14,
-                name: "yellowstonelegal.com",
-                tld: ".com",
-                backlinks: 890,
-                refDomains: 160,
-                value: 1400,
-                niche: "Law Firm",
-                watchlisted: false
-            }
-        ];
-
-        let domains = [...defaultDomains];
-        let currentView = 'table';
-        let showOnlyWatchlist = false;
-
-        // Static Cost Calculation Based on Domain Suffix
-        function getEstimatedCost(domainName) {
-            const lower = domainName.toLowerCase();
-            if (lower.endsWith('.io')) return 40;
-            if (lower.endsWith('.co')) return 25;
-            if (lower.endsWith('.org') || lower.endsWith('.net')) return 12;
-            return 12; // default for .com and others
-        }
-
-        // Initialize application on load
-        window.addEventListener('DOMContentLoaded', () => {
-            renderDomains();
-            updateStats();
-        });
-
-        // Switch between Table and Grid views
-        function switchView(view) {
-            currentView = view;
-            const tableContainer = document.getElementById('view-table-container');
-            const gridContainer = document.getElementById('view-grid-container');
-            const btnTable = document.getElementById('btn-view-table');
-            const btnGrid = document.getElementById('btn-view-grid');
-
-            if (view === 'table') {
-                tableContainer.classList.remove('hidden');
-                gridContainer.classList.add('hidden');
-                btnTable.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5";
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5";
-            } else {
-                tableContainer.classList.add('hidden');
-                gridContainer.classList.remove('hidden');
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5";
-                btnTable.className = "px-3 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5";
-            }
-            renderDomains();
-        }
-
-        // Toggle Watchlist tab filter
-        function toggleWatchlistTab() {
-            showOnlyWatchlist = !showOnlyWatchlist;
-            const btn = document.getElementById('btn-watchlist-toggle');
-            if (showOnlyWatchlist) {
-                btn.classList.add('border-amber-500/80', 'bg-dark-800', 'text-amber-300');
-                showToast("Filtering Watchlisted Domains", "info");
-            } else {
-                btn.classList.remove('border-amber-500/80', 'bg-dark-800', 'text-amber-300');
-            }
-            filterDomains();
-        }
-
-        // Filter and Sort Domains
-        function filterDomains() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            const tldFilter = document.getElementById('filter-tld').value;
-            const sortMode = document.getElementById('sort-select').value;
-
-            let filtered = domains.filter(d => {
-                const matchesQuery = d.name.toLowerCase().includes(query) || d.niche.toLowerCase().includes(query);
-                const matchesTld = tldFilter === "" || d.tld === tldFilter;
-                const matchesWatchlist = !showOnlyWatchlist || d.watchlisted;
-                return matchesQuery && matchesTld && matchesWatchlist;
-            });
-
-            // Sorting logic
-            filtered.sort((a, b) => {
-                if (sortMode === 'value-desc') return b.value - a.value;
-                if (sortMode === 'backlinks-desc') return b.backlinks - a.backlinks;
-                if (sortMode === 'name-asc') return a.name.localeCompare(b.name);
-                return 0;
-            });
-
-            renderFilteredDomains(filtered);
-        }
-
-        // Render domains into table and grid containers
-        function renderFilteredDomains(list) {
-            const tbody = document.getElementById('domain-table-body');
-            const grid = document.getElementById('view-grid-container');
-            const emptyState = document.getElementById('empty-state');
-
-            tbody.innerHTML = '';
-            grid.innerHTML = '';
-
-            if (list.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            } else {
-                emptyState.classList.add('hidden');
-            }
-
-            list.forEach(d => {
-                const cost = getEstimatedCost(d.name);
-                const bookmarkClass = d.watchlisted ? "text-amber-400 fa-solid" : "text-slate-500 hover:text-amber-400 fa-regular";
-
-                // Table Row HTML
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-dark-800/50 transition group";
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-medium text-white flex items-center gap-2">
-                        <button onclick="toggleWatchlist(${d.id})" class="${bookmarkClass} transition" title="Toggle Watchlist">
-                            <i class="fa-bookmark text-sm"></i>
-                        </button>
-                        <span class="mono">${d.name}</span>
-                    </td>
-                    <td class="py-3 px-4">
-                        <button onclick="openBacklinksModal(${d.id})" class="text-slate-300 hover:text-indigo-400 mono font-semibold underline decoration-slate-700 hover:decoration-indigo-400 underline-offset-4 transition flex items-center gap-1" title="Click to view referring links">
-                            ${d.backlinks.toLocaleString()} <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500"></i>
-                        </button>
-                    </td>
-                    <td class="py-3 px-4">
-                        <button onclick="openBacklinksModal(${d.id})" class="text-slate-400 hover:text-indigo-400 mono underline decoration-slate-700 hover:decoration-indigo-400 underline-offset-4 transition" title="Click to view referring links">
-                            ${d.refDomains.toLocaleString()}
-                        </button>
-                    </td>
-                    <td class="py-3 px-4 text-emerald-400 mono font-semibold">$${cost}/yr</td>
-                    <td class="py-3 px-4 text-indigo-400 mono font-semibold">$${d.value.toLocaleString()}</td>
-                    <td class="py-3 px-4"><span class="bg-dark-950 border border-slate-800 px-2.5 py-1 rounded-md text-[11px] text-slate-300">${d.niche}</span></td>
-                    <td class="py-3 px-4 text-right space-x-2">
-                        <button onclick="openModal(${d.id})" class="bg-dark-800 hover:bg-indigo-600 hover:text-white text-slate-300 px-2.5 py-1.5 rounded-lg text-xs transition font-medium">
-                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Pitch
-                        </button>
-                        <a href="https://www.namecheap.com/domains/registration/results/?domain=${d.name}" target="_blank" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs transition inline-flex items-center">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                        </a>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-
-                // Grid Card HTML
-                const card = document.createElement('div');
-                card.className = "bg-dark-950 border border-slate-800 hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between transition space-y-3";
-                card.innerHTML = `
-                    <div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono">${d.tld}</span>
-                            <button onclick="toggleWatchlist(${d.id})" class="${bookmarkClass} text-base transition">
-                                <i class="fa-bookmark"></i>
-                            </button>
-                        </div>
-                        <h4 class="text-base font-bold text-white mt-2 mono">${d.name}</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">${d.niche}</p>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 bg-dark-900 p-2.5 rounded-lg border border-slate-800 text-center">
-                        <div>
-                            <p class="text-[9px] text-slate-400 uppercase">Backlinks</p>
-                            <button onclick="openBacklinksModal(${d.id})" class="text-xs font-bold text-white hover:text-indigo-400 mono mt-0.5 underline decoration-slate-700 underline-offset-2">
-                                ${d.backlinks.toLocaleString()}
-                            </button>
-                        </div>
-                        <div>
-                            <p class="text-[9px] text-slate-400 uppercase">Est Cost</p>
-                            <p class="text-xs font-bold text-emerald-400 mono mt-0.5">$${cost}</p>
-                        </div>
-                        <div>
-                            <p class="text-[9px] text-slate-400 uppercase">Est Value</p>
-                            <p class="text-xs font-bold text-indigo-400 mono mt-0.5">$${d.value.toLocaleString()}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 pt-1">
-                        <button onclick="openModal(${d.id})" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Pitch Generator
-                        </button>
-                        <a href="https://www.namecheap.com/domains/registration/results/?domain=${d.name}" target="_blank" class="bg-dark-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs transition flex items-center justify-center">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                        </a>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function renderDomains() {
-            filterDomains();
-        }
-
-        // Update top stats bar numbers
-        function updateStats() {
-            document.getElementById('stat-total').innerText = domains.length;
-            const highValueCount = domains.filter(d => d.value >= 1500).length;
-            document.getElementById('stat-high-value').innerText = highValueCount;
-            const watchlistedCount = domains.filter(d => d.watchlisted).length;
-            document.getElementById('stat-watchlist').innerText = watchlistedCount;
-            document.getElementById('watchlist-badge').innerText = watchlistedCount;
-            
-            const totalBl = domains.reduce((acc, curr) => acc + curr.backlinks, 0);
-            const avgBl = domains.length > 0 ? Math.round(totalBl / domains.length) : 0;
-            document.getElementById('stat-avg-bl').innerText = avgBl.toLocaleString();
-        }
-
-        // Toggle domain watchlisted state
-        function toggleWatchlist(id) {
-            const domain = domains.find(d => d.id === id);
-            if (domain) {
-                domain.watchlisted = !domain.watchlisted;
-                renderDomains();
-                updateStats();
-                showToast(domain.watchlisted ? `Added ${domain.name} to Watchlist` : `Removed ${domain.name} from Watchlist`, "success");
-            }
-        }
-
-        // Open Modal with Pitch Generator
-        function openModal(id) {
-            const d = domains.find(d => d.id === id);
-            if (!d) return;
-
-            const cost = getEstimatedCost(d.name);
-            document.getElementById('modal-tld-badge').innerText = d.tld.toUpperCase();
-            document.getElementById('modal-domain-title').innerText = d.name;
-            document.getElementById('modal-backlinks').innerText = d.backlinks.toLocaleString();
-            document.getElementById('modal-refdomains').innerText = d.refDomains.toLocaleString();
-            document.getElementById('modal-cost').innerText = `$${cost}/yr`;
-            document.getElementById('modal-value').innerText = `$${d.value.toLocaleString()}`;
-
-            // Generate customized outreach pitch
-            const pitch = `Hi Team,\n\nI was auditing digital assets in the ${d.niche} sector and noticed that the domain ${d.name} recently dropped and is currently available for standard registration.\n\nNotably, it features an established backlink profile (${d.backlinks.toLocaleString()} backlinks across ${d.refDomains} referring domains). Acquiring this domain to set up a 301 redirect to your primary web property would instantly capture historical search equity and referral traffic.\n\nLet me know if your marketing team has interest in securing this digital asset.\n\nBest regards,\nDomain Asset Acquisition`;
-
-            document.getElementById('modal-pitch-text').value = pitch;
-            document.getElementById('modal-registrar-link').href = `https://www.namecheap.com/domains/registration/results/?domain=${d.name}`;
-            document.getElementById('domain-modal').classList.remove('hidden');
-        }
-
-        function closeModal() {
-            document.getElementById('domain-modal').classList.add('hidden');
-        }
-
-        // Open Backlinks & References Inspector Modal
-        function openBacklinksModal(id) {
-            const d = domains.find(d => d.id === id);
-            if (!d) return;
-
-            document.getElementById('backlinks-modal-title').innerText = d.name;
-            document.getElementById('backlinks-modal-count').innerText = d.backlinks.toLocaleString();
-            document.getElementById('backlinks-modal-refcount').innerText = d.refDomains.toLocaleString();
-
-            const container = document.getElementById('backlinks-list-container');
-            container.innerHTML = '';
-
-            // Generate realistic mock referring domains based on the niche
-            const sampleSources = [
-                { url: `blog.${d.name.split('.')[0]}-insights.org`, type: 'Editorial Blog Post', da: 'DR 64', anchor: `${d.niche} resource guide` },
-                { url: `news.regional-business-journal.com`, type: 'Press Release / News', da: 'DR 78', anchor: `official announcement` },
-                { url: `directory.${d.niche.toLowerCase().split('/')[0].trim().replace(/\s+/g, '')}hub.net`, type: 'Directory Citation', da: 'DR 52', anchor: `industry listing` },
-                { url: `partners.industry-network.io`, type: 'Partner Link', da: 'DR 61', anchor: `recommended provider` },
-                { url: `reviews.global-tech-surveys.org`, type: 'Review Reference', da: 'DR 49', anchor: `visit website` }
-            ];
-
-            sampleSources.forEach(src => {
-                const item = document.createElement('div');
-                item.className = "p-3 flex items-center justify-between hover:bg-dark-900 transition";
-                item.innerHTML = `
-                    <div class="space-y-0.5">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-white font-medium">${src.url}</span>
-                            <span class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">${src.da}</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400">Anchor text: <span class="text-indigo-300 italic">"${src.anchor}"</span> &bull; Type: ${src.type}</p>
-                    </div>
-                    <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded font-mono">Dofollow</span>
-                `;
-                container.appendChild(item);
-            });
-
-            document.getElementById('backlinks-modal').classList.remove('hidden');
-        }
-
-        function closeBacklinksModal() {
-            document.getElementById('backlinks-modal').classList.add('hidden');
-        }
-
-        // Copy pitch to clipboard
-        function copyPitch() {
-            const textarea = document.getElementById('modal-pitch-text');
-            textarea.select();
-            navigator.clipboard.writeText(textarea.value);
-            showToast("Outreach pitch template copied to clipboard!", "success");
-        }
-
-        // Reset all filters
-        function resetFilters() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('filter-tld').value = '';
-            document.getElementById('sort-select').value = 'value-desc';
-            showOnlyWatchlist = false;
-            document.getElementById('btn-watchlist-toggle').classList.remove('border-amber-500/80', 'bg-dark-800', 'text-amber-300');
-            renderDomains();
-            showToast("Filters reset successfully", "info");
-        }
-
-        // Reset default mock data
-        function resetMockData() {
-            domains = [...defaultDomains];
-            renderDomains();
-            updateStats();
-            toggleMenu('csv-menu');
-            showToast("Restored default scanner records", "success");
-        }
-
-        // Toggle UI dropdown menus
-        function toggleMenu(menuId) {
-            const menu = document.getElementById(menuId);
-            menu.classList.toggle('hidden');
-        }
-
-        // Close dropdowns when clicking outside
-        window.addEventListener('click', function(e) {
-            if (!e.target.closest('.relative')) {
-                document.querySelectorAll('[id$="-menu"]').forEach(m => m.classList.add('hidden'));
-            }
-        });
-
-        // Toast Notification System
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            let bgClass = "bg-emerald-600 text-white border-emerald-500";
-            let icon = "fa-circle-check";
-
-            if (type === 'info') {
-                bgClass = "bg-indigo-600 text-white border-indigo-500";
-                icon = "fa-circle-info";
-            } else if (type === 'error') {
-                bgClass = "bg-rose-600 text-white border-rose-500";
-                icon = "fa-triangle-exclamation";
-            }
-
-            toast.className = `flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl border text-xs font-medium pointer-events-auto transition animate-in fade-in slide-in-from-bottom-3 duration-200 ${bgClass}`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
-            
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // CSV Export Functionality
-        function exportCsv() {
-            let csvContent = "data:text/csv;charset=utf-8,Domain,Backlinks,RefDomains,EstCost,EstValue,Niche\n";
-            domains.forEach(d => {
-                const cost = getEstimatedCost(d.name);
-                csvContent += `${d.name},${d.backlinks},${d.refDomains},${cost},${d.value},"${d.niche}"\n`;
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "domain_scout_export.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toggleMenu('csv-menu');
-            showToast("Exported filtered domain data to CSV", "success");
-        }
-
-        function triggerCsvUpload() {
-            toggleMenu('csv-menu');
-            document.getElementById('csv-file-input').click();
-        }
-
-        // Custom CSV Import Handler
-        function handleCsvUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const lines = text.split('\n');
-                let importedCount = 0;
-
-                const newDomains = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-                    const cols = line.split(',');
-                    if (cols.length >= 2) {
-                        const name = cols[0].trim();
-                        const tld = name.includes('.') ? '.' + name.split('.').pop() : '.com';
-                        newDomains.push({
-                            id: Date.now() + i,
-                            name: name,
-                            tld: tld,
-                            backlinks: parseInt(cols[1]) || Math.floor(Math.random() * 1500) + 200,
-                            refDomains: parseInt(cols[2]) || Math.floor(Math.random() * 300) + 50,
-                            value: parseInt(cols[4]) || Math.floor(Math.random() * 2000) + 500,
-                            niche: cols[5] ? cols[5].replace(/"/g, '').trim() : 'Custom Import',
-                            watchlisted: false
-                        });
-                        importedCount++;
-                    }
-                }
-
-                if (importedCount > 0) {
-                    domains = [...newDomains, ...domains];
-                    renderDomains();
-                    updateStats();
-                    showToast(`Successfully imported ${importedCount} custom domains!`, "success");
-                } else {
-                    showToast("Could not parse CSV format. Please check headers.", "error");
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-    </script>
+        <div class="prices"><span class="k">Kalshi ${cents(r.k.mid)}</span><span class="p">Polymarket ${cents(r.p.mid)}</span></div>
+      </div>
+      <div class="gapbox">
+        <div class="gapnum">${sign}${Math.abs(r.gap * 100).toFixed(1)}</div>
+        <div class="gaplbl">pts, Polymarket vs Kalshi</div>
+        ${r.edge ? `<span class="edge" title="${esc(r.dir)}">${(r.edge * 100).toFixed(1)}¢ edge</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- orchestration ---------- */
+async function load() {
+  const btn = $('#refresh'); btn.disabled = true; $('#status').textContent = 'Fetching Kalshi and Polymarket…';
+  state.errors = [];
+  const [k, p] = await Promise.allSettled([fetchKalshi(), fetchPoly()]);
+  if (k.status === 'fulfilled') state.kalshi = k.value; else state.errors.push({ name: 'Kalshi', msg: k.reason.message });
+  if (p.status === 'fulfilled') state.poly = p.value; else state.errors.push({ name: 'Polymarket', msg: p.reason.message });
+  matchAll();
+  state.updated = new Date();
+  $('#status').textContent = `${state.kalshi.length.toLocaleString()} Kalshi and ${state.poly.length.toLocaleString()} Polymarket markets · updated ${state.updated.toLocaleTimeString()}`;
+  btn.disabled = false; render();
+}
+$('#refresh').onclick = load;
+['search', 'sort', 'thresh'].forEach(id => $('#' + id).addEventListener('input', render));
+$('#auto').onchange = e => { clearInterval(state.timer); if (e.target.checked) state.timer = setInterval(load, 60000); };
+load();
+</script>
 </body>
 </html>
